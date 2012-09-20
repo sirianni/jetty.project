@@ -18,7 +18,8 @@
 
 package org.eclipse.jetty.osgi.boot;
 
-import static org.ops4j.pax.exam.CoreOptions.*;
+import static org.ops4j.pax.exam.CoreOptions.mavenBundle;
+import static org.ops4j.pax.exam.CoreOptions.options;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -26,6 +27,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -34,10 +36,9 @@ import javax.servlet.http.HttpServletResponse;
 
 import junit.framework.Assert;
 
-import org.eclipse.jetty.client.ContentExchange;
 import org.eclipse.jetty.client.HttpClient;
-import org.eclipse.jetty.client.HttpExchange;
-import org.eclipse.jetty.http.HttpMethods;
+import org.eclipse.jetty.client.HttpContentResponse;
+import org.eclipse.jetty.client.api.Response;
 import org.eclipse.jetty.http.HttpStatus;
 import org.eclipse.jetty.osgi.boot.internal.serverfactory.DefaultJettyAtJettyHomeHelper;
 import org.junit.Test;
@@ -51,6 +52,7 @@ import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceReference;
 import org.osgi.service.http.HttpService;
+//import org.eclipse.jetty.client.ContentExchange;
 
 
 /**
@@ -89,7 +91,9 @@ public class TestJettyOSGiBootCore
                 mavenBundle().groupId( "org.eclipse.jetty" ).artifactId( "jetty-io" ).versionAsInProject().noStart(),
                 mavenBundle().groupId( "org.eclipse.jetty" ).artifactId( "jetty-continuation" ).versionAsInProject().noStart(),
                 mavenBundle().groupId( "org.eclipse.jetty" ).artifactId( "jetty-security" ).versionAsInProject().noStart(),
-                mavenBundle().groupId( "org.eclipse.jetty" ).artifactId( "jetty-websocket" ).versionAsInProject().noStart(),
+                mavenBundle().groupId( "org.eclipse.jetty.websocket" ).artifactId( "websocket-client" ).versionAsInProject().noStart(),
+                mavenBundle().groupId( "org.eclipse.jetty.websocket" ).artifactId( "websocket-core" ).versionAsInProject().noStart(),
+                mavenBundle().groupId( "org.eclipse.jetty.websocket" ).artifactId( "websocket-server" ).versionAsInProject().noStart(),
                 mavenBundle().groupId( "org.eclipse.jetty" ).artifactId( "jetty-servlets" ).versionAsInProject().noStart(),
                 
                 mavenBundle().groupId( "org.eclipse.jetty" ).artifactId( "jetty-client" ).versionAsInProject().noStart()
@@ -163,31 +167,19 @@ public class TestJettyOSGiBootCore
             protected void doGet(HttpServletRequest req,
                     HttpServletResponse resp) throws ServletException,
                     IOException {
-                resp.getWriter().append("Hello");
+                resp.getWriter().write("Hello");
             }
         }, null, null);
         
         //now test the servlet
         HttpClient client = new HttpClient();
-        client.setConnectorType(HttpClient.CONNECTOR_SELECT_CHANNEL);
         try
         {
             client.start();
-            
-            ContentExchange getExchange = new ContentExchange();
-            getExchange.setURL("http://127.0.0.1:9876/greetings");
-            getExchange.setMethod(HttpMethods.GET);
+            Response response = client.GET("http://127.0.0.1:9876/greetings").get(5, TimeUnit.SECONDS);;
+            Assert.assertEquals(HttpStatus.OK_200, response.status());
      
-            client.send(getExchange);
-            int state = getExchange.waitForDone();
-            Assert.assertEquals("state should be done", HttpExchange.STATUS_COMPLETED, state);
-     
-            String content = null;
-            int responseStatus = getExchange.getResponseStatus();
-            Assert.assertEquals(HttpStatus.OK_200, responseStatus);
-            if (responseStatus == HttpStatus.OK_200) {
-                content = getExchange.getResponseContent();
-            }
+            String content = new String(((HttpContentResponse)response).content());
             Assert.assertEquals("Hello", content);
         }
         finally
