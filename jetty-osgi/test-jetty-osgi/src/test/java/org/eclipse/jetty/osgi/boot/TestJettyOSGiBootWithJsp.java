@@ -18,21 +18,24 @@
 
 package org.eclipse.jetty.osgi.boot;
 
-import static org.ops4j.pax.exam.CoreOptions.*;
+import static org.ops4j.pax.exam.CoreOptions.mavenBundle;
+import static org.ops4j.pax.exam.CoreOptions.options;
+import static org.ops4j.pax.exam.CoreOptions.systemProperty;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import junit.framework.Assert;
 
-import org.eclipse.jetty.client.ContentExchange;
 import org.eclipse.jetty.client.HttpClient;
-import org.eclipse.jetty.client.HttpExchange;
-import org.eclipse.jetty.http.HttpMethods;
+import org.eclipse.jetty.client.HttpContentResponse;
+import org.eclipse.jetty.client.api.Response;
 import org.eclipse.jetty.http.HttpStatus;
+import org.eclipse.jetty.osgi.boot.internal.serverfactory.DefaultJettyAtJettyHomeHelper;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -53,18 +56,19 @@ public class TestJettyOSGiBootWithJsp
 {
     private static final boolean LOGGING_ENABLED = false;
     private static final boolean REMOTE_DEBUGGING = false;
-    
+
     @Inject
     BundleContext bundleContext = null;
 
     @Configuration
     public static Option[] configure()
     {
-    	File testrealm = new File("src/test/config/etc/jetty-testrealm.xml");
-    	
+    	File etcFolder = new File("src/test/config/etc");
+    	String etc = "file://" + etcFolder.getAbsolutePath();
+
     	ArrayList<Option> options = new ArrayList<Option>();
     	options.addAll(TestJettyOSGiBootCore.provisionCoreJetty());
-    	
+
     	// Enable Logging
     	if(LOGGING_ENABLED) {
     	    options.addAll(Arrays.asList(options(
@@ -74,7 +78,7 @@ public class TestJettyOSGiBootWithJsp
         	systemProperty( "org.ops4j.pax.logging.DefaultServiceLog.level" ).value( "INFO" )
     	    )));
     	}
-    	
+
     	// Remote JDWP Debugging
     	if(REMOTE_DEBUGGING) {
     	    options.addAll(Arrays.asList(options(
@@ -85,8 +89,11 @@ public class TestJettyOSGiBootWithJsp
 
     	// Standard Options
     	options.addAll(Arrays.asList(options(
-            PaxRunnerOptions.vmOption("-Djetty.port=9876 -D" + OSGiServerConstants.MANAGED_JETTY_XML_CONFIG_URLS + 
-                "=etc/jetty.xml;" + testrealm.getAbsolutePath()),
+    		// get the jetty home config from the osgi boot bundle.
+//            PaxRunnerOptions.vmOptions("-Djetty.port=9876 -D" + DefaultJettyAtJettyHomeHelper.SYS_PROP_JETTY_HOME_BUNDLE + "=org.eclipse.jetty.osgi.boot"),
+                
+            PaxRunnerOptions.vmOption("-Djetty.port=9876 -D" + OSGiServerConstants.MANAGED_JETTY_XML_CONFIG_URLS +
+                "="+etc+"/jetty.xml;"+etc+"/jetty-selector.xml;"+etc+"/jetty-deployer.xml;" + etc + "/jetty-testrealm.xml"),
 
             /* orbit deps */
             mavenBundle().groupId( "org.eclipse.jetty.orbit" ).artifactId( "javax.servlet.jsp" ).versionAsInProject(),
@@ -96,16 +103,17 @@ public class TestJettyOSGiBootWithJsp
     	    mavenBundle().groupId( "org.eclipse.jetty.orbit" ).artifactId( "org.apache.jasper.glassfish" ).versionAsInProject(),
             mavenBundle().groupId( "org.eclipse.jetty.orbit" ).artifactId( "org.apache.taglibs.standard.glassfish" ).versionAsInProject(),
             mavenBundle().groupId( "org.eclipse.jetty.orbit" ).artifactId( "org.eclipse.jdt.core" ).versionAsInProject(),
-    	    
+
     	    /* jetty-osgi deps */
     	    mavenBundle().groupId( "org.eclipse.jetty.osgi" ).artifactId( "jetty-osgi-boot" ).versionAsInProject().start(),
             mavenBundle().groupId( "org.eclipse.jetty.osgi" ).artifactId( "jetty-osgi-boot-jsp" ).versionAsInProject().start(),
 
-            mavenBundle().groupId( "org.eclipse.jetty" ).artifactId( "test-jetty-webapp" ).classifier("webbundle").versionAsInProject()
-            
+            mavenBundle().groupId( "org.eclipse.jetty" ).artifactId( "test-jetty-webapp" ).classifier("webbundle").versionAsInProject(),
+            mavenBundle().groupId( "org.eclipse.jetty" ).artifactId( "jetty-security" ).versionAsInProject()
+
             // mavenBundle().groupId( "org.eclipse.equinox.http" ).artifactId( "servlet" ).versionAsInProject().start()
         )));
-    	
+
     	return options.toArray(new Option[options.size()]);
     }
 
@@ -123,40 +131,28 @@ public class TestJettyOSGiBootWithJsp
         	bundlesIndexedBySymbolicName.put(b.getSymbolicName(), b);
         	//System.err.println("Got " + b.getSymbolicName());
         }
-        
+
         Bundle osgiBoot = bundlesIndexedBySymbolicName.get("org.eclipse.jetty.osgi.boot");
         Assert.assertNotNull("Could not find the org.eclipse.jetty.osgi.boot bundle", osgiBoot);
         Assert.assertTrue(osgiBoot.getState() == Bundle.ACTIVE);
-        
+
         Bundle osgiBootJsp = bundlesIndexedBySymbolicName.get("org.eclipse.jetty.osgi.boot.jsp");
         Assert.assertNotNull("Could not find the org.eclipse.jetty.osgi.boot.jsp bundle", osgiBootJsp);
         Assert.assertTrue("The fragment jsp is not correctly resolved", osgiBootJsp.getState() == Bundle.RESOLVED);
-        
+
         Bundle testWebBundle = bundlesIndexedBySymbolicName.get("org.eclipse.jetty.test-jetty-webapp");
         Assert.assertNotNull("Could not find the org.eclipse.jetty.osgi.boot.jsp bundle", osgiBootJsp);
         Assert.assertTrue("The fragment jsp is not correctly resolved", testWebBundle.getState() == Bundle.ACTIVE);
-        
+
         //now test the jsp/dump.jsp
         HttpClient client = new HttpClient();
-        client.setConnectorType(HttpClient.CONNECTOR_SELECT_CHANNEL);
         try
         {
             client.start();
-            
-            ContentExchange getExchange = new ContentExchange();
-            getExchange.setURL("http://127.0.0.1:9876/jsp/dump.jsp");
-            getExchange.setMethod(HttpMethods.GET);
-     
-            client.send(getExchange);
-            int state = getExchange.waitForDone();
-            Assert.assertEquals("state should be done", HttpExchange.STATUS_COMPLETED, state);
-            
-            String content = null;
-            int responseStatus = getExchange.getResponseStatus();
-            Assert.assertEquals(HttpStatus.OK_200, responseStatus);
-            if (responseStatus == HttpStatus.OK_200) {
-                content = getExchange.getResponseContent();
-            }
+            Response response = client.GET("http://127.0.0.1:9876/jsp/dump.jsp").get(5, TimeUnit.SECONDS);
+            Assert.assertEquals(HttpStatus.OK_200, response.status());
+
+            String content = new String(((HttpContentResponse)response).content());
             //System.err.println("content: " + content);
             Assert.assertTrue(content.indexOf("<tr><th>ServletPath:</th><td>/jsp/dump.jsp</td></tr>") != -1);
         }
@@ -164,8 +160,8 @@ public class TestJettyOSGiBootWithJsp
         {
             client.stop();
         }
-        
+
     }
 
-	
+
 }

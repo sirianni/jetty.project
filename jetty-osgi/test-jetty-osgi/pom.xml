@@ -78,6 +78,12 @@
     </dependency>
     <dependency>
       <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-security</artifactId>
+      <version>${project.version}</version>
+      <scope>runtime</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
       <artifactId>jetty-xml</artifactId>
       <version>${project.version}</version>
       <scope>runtime</scope>
@@ -99,8 +105,21 @@
       <scope>runtime</scope>
     </dependency>
     <dependency>
-      <groupId>org.eclipse.jetty</groupId>
-      <artifactId>jetty-websocket</artifactId>
+      <groupId>org.eclipse.jetty.websocket</groupId>
+      <artifactId>websocket-client</artifactId>
+      <version>${project.version}</version>
+      <scope>runtime</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.jetty.websocket</groupId>
+      <artifactId>websocket-core</artifactId>
+      <version>${project.version}</version>
+      <scope>runtime</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.jetty.websocket</groupId>
+      <artifactId>websocket-server</artifactId>
+      <version>${project.version}</version>
       <scope>runtime</scope>
     </dependency>
     <dependency>
@@ -126,7 +145,7 @@
       <artifactId>servlet</artifactId>
       <scope>runtime</scope>
     </dependency>
-    
+
     <dependency>
       <groupId>org.eclipse.jetty</groupId>
       <artifactId>test-jetty-webapp</artifactId>
@@ -134,7 +153,7 @@
       <classifier>webbundle</classifier>
       <scope>test</scope>
     </dependency>
-    
+
     <dependency>
       <groupId>org.ops4j.pax.exam</groupId>
       <artifactId>pax-exam</artifactId>
