@@ -38,8 +38,8 @@
     	<artifactId>org.eclipse.osgi</artifactId>
     </dependency>
     <dependency>
-        <groupId>org.eclipse.osgi</groupId>
-        <artifactId>org.eclipse.osgi.services</artifactId>
+      <groupId>org.eclipse.osgi</groupId>
+      <artifactId>org.eclipse.osgi.services</artifactId>
     </dependency>
   </dependencies>
 
@@ -122,8 +122,7 @@
  javax.servlet.http;version="2.6.0",
  javax.transaction;version="1.1.0";resolution:=optional,
  javax.transaction.xa;version="1.1.0";resolution:=optional,
- org.eclipse.jetty.nested;version="9";resolution:=optional,
- org.eclipse.jetty.annotations;version="9";resolution:=optional,
+ org.eclipse.jetty.annotations;version="9.0.0";resolution:=optional,
  org.osgi.framework,
  org.osgi.service.cm;version="1.2.0",
  org.osgi.service.packageadmin,
@@ -137,7 +136,7 @@
  org.xml.sax.helpers,
  *
                         </Import-Package>
-                        <DynamicImport-Package>org.eclipse.jetty.*;version="9"</DynamicImport-Package>
+                        <DynamicImport-Package>org.eclipse.jetty.*;version="9.0.0"</DynamicImport-Package>
                         <!--Require-Bundle/-->
                         <Bundle-RequiredExecutionEnvironment>JavaSE-1.6</Bundle-RequiredExecutionEnvironment>
                     </instructions>
