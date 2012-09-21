@@ -48,8 +48,26 @@
                         <goals>
                             <goal>manifest</goal>
                         </goals>
+                        <configuration>
+                          <instructions>
+                            <Export-Package>*</Export-Package>
+                            <Import-Package>javax.net.*,javax.servlet.*;version="2.6.0",org.eclipse.jetty.*;version="[9.0,10.0)"</Import-Package>
+                          </instructions>
+                        </configuration>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+              <!--
+              Required for OSGI
+              -->
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-jar-plugin</artifactId>
+              <configuration>
+                  <archive>
+                      <manifestFile>${project.build.outputDirectory}/META-INF/MANIFEST.MF</manifestFile>
+                  </archive>
+              </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
