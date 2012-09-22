@@ -71,6 +71,9 @@ public class HttpClientLoadTest extends AbstractHttpClientServerTest
         CountDownLatch latch = new CountDownLatch(iterations);
         List<String> failures = new ArrayList<>();
 
+        int factor = logger.isDebugEnabled() ? 25 : 1;
+        factor *= "http".equalsIgnoreCase(scheme) ? 10 : 1000;
+
         // Dumps the state of the client if the test takes too long
         final Thread testThread = Thread.currentThread();
         client.getScheduler().schedule(new Runnable()
@@ -90,7 +93,7 @@ public class HttpClientLoadTest extends AbstractHttpClientServerTest
                 }
                 testThread.interrupt();
             }
-        }, iterations * ("http".equalsIgnoreCase(scheme) ? 10 : 1000), TimeUnit.MILLISECONDS);
+        }, iterations * factor, TimeUnit.MILLISECONDS);
 
         long begin = System.nanoTime();
         for (int i = 0; i < iterations; ++i)
@@ -117,10 +120,12 @@ public class HttpClientLoadTest extends AbstractHttpClientServerTest
         HttpMethod method = random.nextBoolean() ? HttpMethod.GET : HttpMethod.POST;
         request.method(method);
 
+        boolean ssl = "https".equalsIgnoreCase(scheme);
+
         // Choose randomly whether to close the connection on the client or on the server
-        if (random.nextBoolean())
+        if (!ssl && random.nextBoolean())
             request.header("Connection", "close");
-        else if (random.nextBoolean())
+        else if (!ssl && random.nextBoolean())
             request.header("X-Close", "true");
 
         switch (method)
