@@ -26,6 +26,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -35,10 +36,10 @@ import org.eclipse.jetty.client.HttpClient;
 import org.eclipse.jetty.client.HttpContentResponse;
 import org.eclipse.jetty.client.api.Response;
 import org.eclipse.jetty.http.HttpStatus;
-import org.eclipse.jetty.osgi.boot.internal.serverfactory.DefaultJettyAtJettyHomeHelper;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.ops4j.pax.exam.CoreOptions;
 import org.ops4j.pax.exam.Inject;
 import org.ops4j.pax.exam.Option;
 import org.ops4j.pax.exam.container.def.PaxRunnerOptions;
@@ -54,7 +55,7 @@ import org.osgi.framework.BundleContext;
 @RunWith( JUnit4TestRunner.class )
 public class TestJettyOSGiBootWithJsp
 {
-    private static final boolean LOGGING_ENABLED = false;
+    private static final boolean LOGGING_ENABLED = true;
     private static final boolean REMOTE_DEBUGGING = false;
 
     @Inject
@@ -67,7 +68,13 @@ public class TestJettyOSGiBootWithJsp
     	String etc = "file://" + etcFolder.getAbsolutePath();
 
     	ArrayList<Option> options = new ArrayList<Option>();
-    	options.addAll(TestJettyOSGiBootCore.provisionCoreJetty());
+    	options.add(PaxRunnerOptions.vmOption("-Djetty.port=9876 -Djetty.home="+ etcFolder.getParentFile().getAbsolutePath() +
+    			" -D" + OSGiServerConstants.MANAGED_JETTY_XML_CONFIG_URLS +
+                "="+etc+"/jetty.xml;"+etc+"/jetty-selector.xml;"+etc+"/jetty-deployer.xml;" + etc + "/jetty-testrealm.xml"));
+    	options.add(CoreOptions.equinox());
+    	options.add(CoreOptions.bootDelegationPackages("org.xml.sax", "org.xml.*",
+    			"org.w3c.*", "javax.xml.*"));
+    	options.addAll(TestJettyOSGiBootCore.coreJettyDependencies());
 
     	// Enable Logging
     	if(LOGGING_ENABLED) {
@@ -78,6 +85,8 @@ public class TestJettyOSGiBootWithJsp
         	systemProperty( "org.ops4j.pax.logging.DefaultServiceLog.level" ).value( "INFO" )
     	    )));
     	}
+    	
+        options.addAll(jspDependencies());
 
     	// Remote JDWP Debugging
     	if(REMOTE_DEBUGGING) {
@@ -87,34 +96,28 @@ public class TestJettyOSGiBootWithJsp
     	    )));
     	}
 
-    	// Standard Options
-    	options.addAll(Arrays.asList(options(
-    		// get the jetty home config from the osgi boot bundle.
-//            PaxRunnerOptions.vmOptions("-Djetty.port=9876 -D" + DefaultJettyAtJettyHomeHelper.SYS_PROP_JETTY_HOME_BUNDLE + "=org.eclipse.jetty.osgi.boot"),
-                
-            PaxRunnerOptions.vmOption("-Djetty.port=9876 -D" + OSGiServerConstants.MANAGED_JETTY_XML_CONFIG_URLS +
-                "="+etc+"/jetty.xml;"+etc+"/jetty-selector.xml;"+etc+"/jetty-deployer.xml;" + etc + "/jetty-testrealm.xml"),
-
-            /* orbit deps */
-            mavenBundle().groupId( "org.eclipse.jetty.orbit" ).artifactId( "javax.servlet.jsp" ).versionAsInProject(),
-            mavenBundle().groupId( "org.eclipse.jetty.orbit" ).artifactId( "javax.servlet.jsp.jstl" ).versionAsInProject(),
-            mavenBundle().groupId( "org.eclipse.jetty.orbit" ).artifactId( "javax.el" ).versionAsInProject(),
-            mavenBundle().groupId( "org.eclipse.jetty.orbit" ).artifactId( "com.sun.el" ).versionAsInProject(),
-    	    mavenBundle().groupId( "org.eclipse.jetty.orbit" ).artifactId( "org.apache.jasper.glassfish" ).versionAsInProject(),
-            mavenBundle().groupId( "org.eclipse.jetty.orbit" ).artifactId( "org.apache.taglibs.standard.glassfish" ).versionAsInProject(),
-            mavenBundle().groupId( "org.eclipse.jetty.orbit" ).artifactId( "org.eclipse.jdt.core" ).versionAsInProject(),
-
-    	    /* jetty-osgi deps */
-    	    mavenBundle().groupId( "org.eclipse.jetty.osgi" ).artifactId( "jetty-osgi-boot" ).versionAsInProject().start(),
-            mavenBundle().groupId( "org.eclipse.jetty.osgi" ).artifactId( "jetty-osgi-boot-jsp" ).versionAsInProject().start(),
-
-            mavenBundle().groupId( "org.eclipse.jetty" ).artifactId( "test-jetty-webapp" ).classifier("webbundle").versionAsInProject(),
-            mavenBundle().groupId( "org.eclipse.jetty" ).artifactId( "jetty-security" ).versionAsInProject()
-
-            // mavenBundle().groupId( "org.eclipse.equinox.http" ).artifactId( "servlet" ).versionAsInProject().start()
-        )));
-
     	return options.toArray(new Option[options.size()]);
+    }
+    
+    public static List<Option> jspDependencies() {
+    	List<Option> res = new ArrayList<Option>();
+    	/* orbit deps */
+    	res.add(mavenBundle().groupId( "org.eclipse.jetty.orbit" ).artifactId( "javax.servlet.jsp" ).versionAsInProject());
+        res.add(mavenBundle().groupId( "org.eclipse.jetty.orbit" ).artifactId( "javax.servlet.jsp.jstl" ).versionAsInProject());
+        res.add(mavenBundle().groupId( "org.eclipse.jetty.orbit" ).artifactId( "javax.el" ).versionAsInProject());
+        res.add(mavenBundle().groupId( "org.eclipse.jetty.orbit" ).artifactId( "com.sun.el" ).versionAsInProject());
+	    res.add(mavenBundle().groupId( "org.eclipse.jetty.orbit" ).artifactId( "org.apache.jasper.glassfish" ).versionAsInProject());
+        res.add(mavenBundle().groupId( "org.eclipse.jetty.orbit" ).artifactId( "org.apache.taglibs.standard.glassfish" ).versionAsInProject());
+        res.add(mavenBundle().groupId( "org.eclipse.jetty.orbit" ).artifactId( "org.eclipse.jdt.core" ).versionAsInProject());
+
+	    /* jetty-osgi deps */
+        res.add(mavenBundle().groupId( "org.eclipse.jetty.osgi" ).artifactId( "jetty-osgi-boot-jsp" ).versionAsInProject().noStart());
+        res.add(mavenBundle().groupId( "org.eclipse.jetty.osgi" ).artifactId( "jetty-osgi-boot" ).versionAsInProject().start());
+
+        res.add(mavenBundle().groupId( "org.eclipse.jetty" ).artifactId( "test-jetty-webapp" ).classifier("webbundle").versionAsInProject());
+
+        res.add(mavenBundle().groupId( "org.eclipse.equinox.http" ).artifactId( "servlet" ).versionAsInProject().start());
+        return res;
     }
 
     /**
@@ -122,27 +125,29 @@ public class TestJettyOSGiBootWithJsp
      * plus your testcase, wrapped into a bundle called pax-exam-probe
      */
     @Test
-    @Ignore
     public void listBundles() throws Exception
     {
     	Map<String,Bundle> bundlesIndexedBySymbolicName = new HashMap<String, Bundle>();
         for( Bundle b : bundleContext.getBundles() )
         {
         	bundlesIndexedBySymbolicName.put(b.getSymbolicName(), b);
-        	//System.err.println("Got " + b.getSymbolicName());
         }
+        Bundle websocketServer = bundlesIndexedBySymbolicName.get("org.eclipse.jetty.websocket.server");
+        Assert.assertNotNull("Could not find the org.eclipse.jetty.websocket.server bundle", websocketServer);
+        Assert.assertEquals(Bundle.RESOLVED, websocketServer.getState());
 
         Bundle osgiBoot = bundlesIndexedBySymbolicName.get("org.eclipse.jetty.osgi.boot");
         Assert.assertNotNull("Could not find the org.eclipse.jetty.osgi.boot bundle", osgiBoot);
-        Assert.assertTrue(osgiBoot.getState() == Bundle.ACTIVE);
+        Assert.assertEquals(Bundle.ACTIVE, osgiBoot.getState());
 
         Bundle osgiBootJsp = bundlesIndexedBySymbolicName.get("org.eclipse.jetty.osgi.boot.jsp");
         Assert.assertNotNull("Could not find the org.eclipse.jetty.osgi.boot.jsp bundle", osgiBootJsp);
-        Assert.assertTrue("The fragment jsp is not correctly resolved", osgiBootJsp.getState() == Bundle.RESOLVED);
+        Assert.assertEquals("The fragment jsp is not correctly resolved.",
+        		Bundle.RESOLVED, osgiBootJsp.getState());
 
         Bundle testWebBundle = bundlesIndexedBySymbolicName.get("org.eclipse.jetty.test-jetty-webapp");
-        Assert.assertNotNull("Could not find the org.eclipse.jetty.osgi.boot.jsp bundle", osgiBootJsp);
-        Assert.assertTrue("The fragment jsp is not correctly resolved", testWebBundle.getState() == Bundle.ACTIVE);
+        Assert.assertNotNull("Could not find the org.eclipse.jetty.test-jetty-webappp bundle", osgiBootJsp);
+        Assert.assertEquals("The test-jetty-webapp is not correctly resolved", Bundle.ACTIVE, testWebBundle.getState());
 
         //now test the jsp/dump.jsp
         HttpClient client = new HttpClient();

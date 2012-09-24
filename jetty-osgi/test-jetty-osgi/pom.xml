@@ -13,7 +13,8 @@
     <bundle-symbolic-name>${project.groupId}.boot.test</bundle-symbolic-name>
     <jetty-orbit-url>http://download.eclipse.org/jetty/orbit/</jetty-orbit-url>
     <assembly-directory>target/distribution</assembly-directory>
-    <paxexam-version>1.2.0</paxexam-version>
+    <paxexam-version-old>1.2.0</paxexam-version-old>
+    <paxexam-version>1.2.4</paxexam-version>
   </properties>
   <dependencies>
     <!-- Orbit Servlet Deps -->
@@ -191,6 +192,18 @@
       <artifactId>jetty-test-helper</artifactId>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-simple</artifactId>
+      <version>${slf4j-version}</version>
+      <scope>provided</scope>
+    </dependency>
+    
   </dependencies>
 
   <build>
