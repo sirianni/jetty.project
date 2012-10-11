@@ -77,6 +77,7 @@ public class Servlet3Continuation implements Continuation
             public void onTimeout(AsyncEvent event) throws IOException
             {
                 _initial=false;
+                _expired=true;
                 event.getAsyncContext().dispatch();
             }
         });
@@ -104,6 +105,7 @@ public class Servlet3Continuation implements Continuation
 
             public void onTimeout(AsyncEvent event) throws IOException
             {
+                _initial=false;
                 _expired=true;
                 listener.onTimeout(Servlet3Continuation.this);
             }
